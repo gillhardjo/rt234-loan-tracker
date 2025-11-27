@@ -189,20 +189,21 @@
     </script>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+		import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+		import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
         // --- Konfigurasi & Inisialisasi ---
         
         // CATATAN DEPLOY: Jika Anda menghosting file ini di luar, isi variabel ini:
         const MANUAL_CONFIG = {
-            // apiKey: "API_KEY_ANDA",
-            // authDomain: "PROJECT_ID.firebaseapp.com",
-            // projectId: "PROJECT_ID",
-            // storageBucket: "PROJECT_ID.firebasestorage.app",
-            // messagingSenderId: "SENDER_ID",
-            // appId: "APP_ID"
+			apiKey: "AIzaSyBTjZYeHMhTxIbxUMcIG-UebYCvrSCWdRs",
+			authDomain: "rt234-loan-tracker.firebaseapp.com",
+			projectId: "rt234-loan-tracker",
+			storageBucket: "rt234-loan-tracker.firebasestorage.app",
+			messagingSenderId: "1013156185202",
+			appId: "1:1013156185202:web:dd8daa3cd74448e77faeeb",
+			measurementId: "G-3D5F7J1EF3"
         };
 
         // Menggunakan config dari environment (jika ada) atau manual (jika di-deploy sendiri)
