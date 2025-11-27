@@ -45,17 +45,48 @@
         import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Konfigurasi & Inisialisasi ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // CATATAN DEPLOY: Jika Anda menghosting file ini di luar, isi variabel ini:
+        const MANUAL_CONFIG = {
+            // apiKey: "API_KEY_ANDA",
+            // authDomain: "PROJECT_ID.firebaseapp.com",
+            // projectId: "PROJECT_ID",
+            // storageBucket: "PROJECT_ID.firebasestorage.app",
+            // messagingSenderId: "SENDER_ID",
+            // appId: "APP_ID"
+        };
+
+        // Menggunakan config dari environment (jika ada) atau manual (jika di-deploy sendiri)
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) 
+            ? JSON.parse(__firebase_config) 
+            : MANUAL_CONFIG;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'loan-tracker-app';
         
+        // Peringatan jika config kosong saat dijalankan secara lokal
+        if (Object.keys(firebaseConfig).length === 0) {
+            console.warn("Konfigurasi Firebase belum diset. Silakan edit bagian MANUAL_CONFIG di dalam kode.");
+            alert("Mode Demo Terbatas: Database tidak terhubung. Silakan edit file dan isi 'MANUAL_CONFIG' dengan kredensial Firebase Anda agar data tersimpan.");
+        }
+
+        let app, auth, db;
         let userId = null;
+
+        // Inisialisasi Aman
+        try {
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                initAuth();
+            }
+        } catch (e) {
+            console.error("Gagal menginisialisasi Firebase:", e);
+        }
 
         // --- Setup Auth ---
         async function initAuth() {
+            if (!auth) return;
             try {
                 const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                 if (token) {
@@ -68,14 +99,14 @@
             }
         }
 
-        initAuth();
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                setupRealtimeListener();
-            }
-        });
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    setupRealtimeListener();
+                }
+            });
+        }
 
         // --- Helper: Format Rupiah ---
         const formatRupiah = (number) => {
@@ -90,15 +121,19 @@
         // --- Logic Firestore ---
         
         window.addLoan = async () => {
-            if (!userId) return;
+            // Cek DB connection
+            if (!db || !userId) {
+                alert("Database belum terhubung. Pastikan Anda sudah mengisi konfigurasi Firebase.");
+                return;
+            }
             
             const borrower = document.getElementById('inputBorrower').value.trim();
-            const source = document.getElementById('inputSource').value.trim();
+            const source = document.getElementById('inputSource').value; // Mengambil value dari Select
             const total = parseFloat(document.getElementById('inputTotal').value);
             const installment = parseFloat(document.getElementById('inputInstallment').value);
 
             if (!borrower || !source || isNaN(total) || isNaN(installment) || total <= 0) {
-                alert("Mohon lengkapi semua data dengan benar (termasuk Nama Peminjam).");
+                alert("Mohon lengkapi semua data dengan benar (termasuk Nama dan RT).");
                 return;
             }
 
@@ -124,7 +159,7 @@
         };
 
         window.updatePeriod = async (id, currentPeriods, change, maxPeriods) => {
-            if (!userId) return;
+            if (!db || !userId) return;
             
             const newPeriod = currentPeriods + change;
             if (newPeriod < 0) return;
@@ -140,7 +175,7 @@
         };
 
         window.deleteLoan = async (id) => {
-            if (!userId || !confirm("Yakin ingin menghapus data pinjaman ini?")) return;
+            if (!db || !userId || !confirm("Yakin ingin menghapus data ini?")) return;
             
             try {
                 await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'loans', id));
@@ -151,6 +186,8 @@
 
         // --- Realtime Listener & UI ---
         function setupRealtimeListener() {
+            if (!db || !userId) return;
+
             const q = query(collection(db, 'artifacts', appId, 'users', userId, 'loans'), orderBy('createdAt', 'desc'));
             
             onSnapshot(q, (snapshot) => {
@@ -234,7 +271,7 @@
                 });
 
                 if (!hasData) {
-                    loanListEl.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">Belum ada data pinjaman. Silakan tambah data baru di atas.</div>`;
+                    loanListEl.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">Belum ada data. Silakan tambah data baru di atas.</div>`;
                 }
 
                 // Update Ringkasan Dashboard
