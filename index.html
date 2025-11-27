@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pelacak Pinjaman & Hutang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        /* Animasi sederhana untuk login */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- ================= BAGIAN LOGIN ================= -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md fade-in">
+            <div class="text-center mb-6">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Login Aplikasi</h2>
+                <p class="text-gray-500 text-sm mt-1">Masukkan PIN/Password untuk mengakses data pinjaman.</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="passwordInput" placeholder="Masukkan password..." 
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        required>
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                    Masuk
+                </button>
+                <p id="loginError" class="text-red-500 text-sm text-center hidden">Password salah! Silakan coba lagi.</p>
+            </form>
+            <div class="mt-6 text-center text-xs text-gray-400">
+                <p>Password Default: <strong>12345</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BAGIAN APLIKASI UTAMA (Awalnya Disembunyikan) ================= -->
+    <div id="main-app" class="hidden max-w-5xl mx-auto p-4 md:p-6 fade-in">
+        
+        <!-- Header -->
+        <header class="mb-8 text-center md:text-left flex flex-col md:flex-row md:justify-between md:items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Pelacak Pinjaman</h1>
+                <p class="text-gray-500 mt-1">Kelola sumber dana dan pantau sisa pembayaran Anda.</p>
+            </div>
+            <button onclick="handleLogout()" class="mt-4 md:mt-0 text-sm text-red-500 hover:text-red-700 font-medium flex items-center justify-center md:justify-end gap-1 px-4 py-2 rounded-lg hover:bg-red-50 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Keluar
+            </button>
+        </header>
+
+        <!-- Ringkasan (Dashboard) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <!-- Kartu Total Pinjaman -->
+            <div class="bg-white p-6 rounded-xl card-shadow border-l-4 border-blue-500">
+                <p class="text-sm font-medium text-gray-500">Total Semua Pinjaman</p>
+                <h2 id="summaryTotalLoan" class="text-2xl font-bold text-gray-800 mt-1">Rp 0</h2>
+            </div>
+            
+            <!-- Kartu Sudah Dibayar -->
+            <div class="bg-white p-6 rounded-xl card-shadow border-l-4 border-emerald-500">
+                <p class="text-sm font-medium text-gray-500">Sudah Dibayar</p>
+                <h2 id="summaryTotalPaid" class="text-2xl font-bold text-emerald-600 mt-1">Rp 0</h2>
+            </div>
+
+            <!-- Kartu Sisa Hutang -->
+            <div class="bg-white p-6 rounded-xl card-shadow border-l-4 border-rose-500">
+                <p class="text-sm font-medium text-gray-500">Sisa Kewajiban</p>
+                <h2 id="summaryRemaining" class="text-2xl font-bold text-rose-600 mt-1">Rp 0</h2>
+            </div>
+        </div>
+
+        <!-- Form Tambah Sumber Dana -->
+        <div class="bg-white p-6 rounded-xl card-shadow mb-8">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Tambah Pinjaman Baru
+            </h3>
+            <!-- Form Input -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Nama Peminjam</label>
+                    <input type="text" id="inputBorrower" placeholder="Contoh: Saya, Budi" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                </div>
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Sumber (Mis: Bank)</label>
+                    <input type="text" id="inputSource" placeholder="Contoh: Koperasi" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                </div>
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Total Pinjaman (Rp)</label>
+                    <input type="number" id="inputTotal" placeholder="0" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                </div>
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Cicilan/Periode (Rp)</label>
+                    <input type="number" id="inputInstallment" placeholder="0" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                </div>
+                <div class="md:col-span-1 flex items-end">
+                    <button onclick="addLoan()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 shadow-md transform active:scale-95">
+                        Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daftar Pinjaman -->
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Daftar Pinjaman Aktif</h3>
+        <div id="loanList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+            <!-- Item pinjaman akan muncul di sini -->
+            <div class="col-span-1 md:col-span-2 text-center py-10 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">
+                Memuat data...
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script untuk Login Sederhana -->
+    <script>
+        const CORRECT_PASSWORD = "12345"; // Password sederhana
+
+        function checkSession() {
+            if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                showMainApp();
+            }
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const password = document.getElementById('passwordInput').value;
+            const errorMsg = document.getElementById('loginError');
+
+            if (password === CORRECT_PASSWORD) {
+                sessionStorage.setItem('isLoggedIn', 'true');
+                showMainApp();
+                errorMsg.classList.add('hidden');
+            } else {
+                errorMsg.classList.remove('hidden');
+                const form = document.getElementById('loginForm');
+                form.classList.add('animate-pulse');
+                setTimeout(() => form.classList.remove('animate-pulse'), 500);
+            }
+        }
+
+        function handleLogout() {
+            sessionStorage.removeItem('isLoggedIn');
+            location.reload(); // Reload halaman untuk kembali ke login
+        }
+
+        function showMainApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+        }
+
+        // Cek sesi saat halaman dimuat
+        checkSession();
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Konfigurasi & Inisialisasi ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let userId = null;
+
+        // --- Setup Auth ---
+        async function initAuth() {
+            try {
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (token) {
+                    await signInWithCustomToken(auth, token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth error:", err);
+            }
+        }
+
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                setupRealtimeListener();
+            }
+        });
+
+        // --- Helper: Format Rupiah ---
+        const formatRupiah = (number) => {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(number);
+        };
+
+        // --- Logic Firestore ---
+        
+        window.addLoan = async () => {
+            if (!userId) return;
+            
+            const borrower = document.getElementById('inputBorrower').value.trim();
+            const source = document.getElementById('inputSource').value.trim();
+            const total = parseFloat(document.getElementById('inputTotal').value);
+            const installment = parseFloat(document.getElementById('inputInstallment').value);
+
+            if (!borrower || !source || isNaN(total) || isNaN(installment) || total <= 0) {
+                alert("Mohon lengkapi semua data dengan benar (termasuk Nama Peminjam).");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'loans'), {
+                    borrowerName: borrower, 
+                    source: source,
+                    totalAmount: total,
+                    installmentAmount: installment,
+                    paidPeriods: 0,
+                    createdAt: Date.now()
+                });
+                
+                // Reset Form
+                document.getElementById('inputBorrower').value = '';
+                document.getElementById('inputSource').value = '';
+                document.getElementById('inputTotal').value = '';
+                document.getElementById('inputInstallment').value = '';
+            } catch (err) {
+                console.error("Error adding loan:", err);
+                alert("Gagal menambah data.");
+            }
+        };
+
+        window.updatePeriod = async (id, currentPeriods, change, maxPeriods) => {
+            if (!userId) return;
+            
+            const newPeriod = currentPeriods + change;
+            if (newPeriod < 0) return;
+            if (newPeriod > maxPeriods) return;
+
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'loans', id), {
+                    paidPeriods: newPeriod
+                });
+            } catch (err) {
+                console.error("Error updating period:", err);
+            }
+        };
+
+        window.deleteLoan = async (id) => {
+            if (!userId || !confirm("Yakin ingin menghapus data pinjaman ini?")) return;
+            
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'loans', id));
+            } catch (err) {
+                console.error("Error deleting:", err);
+            }
+        };
+
+        // --- Realtime Listener & UI ---
+        function setupRealtimeListener() {
+            const q = query(collection(db, 'artifacts', appId, 'users', userId, 'loans'), orderBy('createdAt', 'desc'));
+            
+            onSnapshot(q, (snapshot) => {
+                const loanListEl = document.getElementById('loanList');
+                loanListEl.innerHTML = '';
+                
+                let grandTotalLoan = 0;
+                let grandTotalPaid = 0;
+                let grandTotalRemaining = 0;
+                let hasData = false;
+
+                snapshot.forEach(docSnap => {
+                    hasData = true;
+                    const data = docSnap.data();
+                    const id = docSnap.id;
+
+                    const paidAmount = data.paidPeriods * data.installmentAmount;
+                    const remaining = data.totalAmount - paidAmount;
+                    const progressPercent = Math.min((paidAmount / data.totalAmount) * 100, 100);
+                    const totalPeriodsEstimate = Math.ceil(data.totalAmount / data.installmentAmount);
+                    const displayName = data.borrowerName ? data.borrowerName : "Tanpa Nama";
+
+                    grandTotalLoan += data.totalAmount;
+                    grandTotalPaid += paidAmount;
+                    grandTotalRemaining += Math.max(remaining, 0);
+
+                    // Render Kartu
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-5 rounded-xl card-shadow border border-gray-100 flex flex-col justify-between";
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-lg font-bold text-gray-800">${displayName}</h4>
+                                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">${data.source}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-1">Cicilan: ${formatRupiah(data.installmentAmount)} / periode</p>
+                                </div>
+                                <button onclick="deleteLoan('${id}')" class="text-gray-400 hover:text-red-500 transition p-1 rounded-full hover:bg-red-50">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 000-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4 mt-2">
+                                <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4 text-sm bg-gray-50 p-3 rounded-lg">
+                                <div>
+                                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Pinjaman</p>
+                                    <p class="font-bold text-gray-800">${formatRupiah(data.totalAmount)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-gray-500 text-xs uppercase tracking-wide">Sisa Hutang</p>
+                                    <p class="font-bold ${remaining <= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+                                        ${remaining <= 0 ? 'Lunas!' : formatRupiah(remaining)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                            <div class="text-xs font-medium text-gray-600">
+                                SUDAH BAYAR: <span class="text-blue-600 text-lg font-bold ml-1">${data.paidPeriods}</span> <span class="text-gray-400 mx-1">/</span> ${totalPeriodsEstimate}
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="updatePeriod('${id}', ${data.paidPeriods}, -1, ${totalPeriodsEstimate})" 
+                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-50 transition"
+                                    ${data.paidPeriods <= 0 ? 'disabled' : ''}>
+                                    -
+                                </button>
+                                <button onclick="updatePeriod('${id}', ${data.paidPeriods}, 1, ${totalPeriodsEstimate})" 
+                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 shadow-sm disabled:opacity-50 transition"
+                                    ${remaining <= 0 ? 'disabled' : ''}>
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    loanListEl.appendChild(card);
+                });
+
+                if (!hasData) {
+                    loanListEl.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">Belum ada data pinjaman. Silakan tambah data baru di atas.</div>`;
+                }
+
+                // Update Ringkasan Dashboard
+                document.getElementById('summaryTotalLoan').textContent = formatRupiah(grandTotalLoan);
+                document.getElementById('summaryTotalPaid').textContent = formatRupiah(grandTotalPaid);
+                document.getElementById('summaryRemaining').textContent = formatRupiah(grandTotalRemaining);
+            });
+        }
+    </script>
+</body>
+</html>
