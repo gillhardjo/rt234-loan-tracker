@@ -1,4 +1,4 @@
-    <!-- Script untuk Login Sederhana -->
+   <!-- Script untuk Login Sederhana -->
     <script>
         const CORRECT_PASSWORD = "12345"; // Password sederhana
 
@@ -117,33 +117,36 @@
             }).format(number);
         };
 
-        // --- Logic Firestore ---
+       // --- Logic Firestore (SHARED DATA) ---
+        // Kita menggunakan path 'artifacts/{appId}/public/data/loans' agar semua user melihat data yang sama.
         
         window.addLoan = async () => {
-            // Cek DB connection
+            // Cek DB connection & Auth
             if (!db || !userId) {
-                alert("Database belum terhubung. Pastikan Anda sudah mengisi konfigurasi Firebase.");
+                alert("Menunggu koneksi database...");
                 return;
             }
             
             const borrower = document.getElementById('inputBorrower').value.trim();
-            const source = document.getElementById('inputSource').value; // Mengambil value dari Select
+            const source = document.getElementById('inputSource').value; 
             const total = parseFloat(document.getElementById('inputTotal').value);
             const installment = parseFloat(document.getElementById('inputInstallment').value);
 
             if (!borrower || !source || isNaN(total) || isNaN(installment) || total <= 0) {
-                alert("Mohon lengkapi semua data dengan benar (termasuk Nama dan RT).");
+                alert("Mohon lengkapi semua data dengan benar.");
                 return;
             }
 
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'loans'), {
+                // MENGGUNAKAN PUBLIC DATA AGAR SYNC
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'), {
                     borrowerName: borrower, 
                     source: source,
                     totalAmount: total,
                     installmentAmount: installment,
                     paidPeriods: 0,
-                    createdAt: Date.now()
+                    createdAt: Date.now(),
+                    lastUpdatedBy: userId // Opsional: untuk tracking siapa yang update
                 });
                 
                 // Reset Form
@@ -153,7 +156,7 @@
                 document.getElementById('inputInstallment').value = '';
             } catch (err) {
                 console.error("Error adding loan:", err);
-                alert("Gagal menambah data.");
+                alert("Gagal menambah data. Pastikan izin database sudah diatur.");
             }
         };
 
@@ -165,7 +168,8 @@
             if (newPeriod > maxPeriods) return;
 
             try {
-                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'loans', id), {
+                // MENGGUNAKAN PUBLIC DATA AGAR SYNC
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'loans', id), {
                     paidPeriods: newPeriod
                 });
             } catch (err) {
@@ -174,10 +178,11 @@
         };
 
         window.deleteLoan = async (id) => {
-            if (!db || !userId || !confirm("Yakin ingin menghapus data ini?")) return;
+            if (!db || !userId || !confirm("Yakin ingin menghapus data ini secara permanen untuk semua orang?")) return;
             
             try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'loans', id));
+                // MENGGUNAKAN PUBLIC DATA AGAR SYNC
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'loans', id));
             } catch (err) {
                 console.error("Error deleting:", err);
             }
@@ -187,7 +192,8 @@
         function setupRealtimeListener() {
             if (!db || !userId) return;
 
-            const q = query(collection(db, 'artifacts', appId, 'users', userId, 'loans'), orderBy('createdAt', 'desc'));
+            // MENGGUNAKAN PUBLIC DATA AGAR SYNC
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'loans'), orderBy('createdAt', 'desc'));
             
             onSnapshot(q, (snapshot) => {
                 const loanListEl = document.getElementById('loanList');
@@ -215,7 +221,7 @@
 
                     // Render Kartu
                     const card = document.createElement('div');
-                    card.className = "bg-white p-5 rounded-xl card-shadow border border-gray-100 flex flex-col justify-between";
+                    card.className = "bg-white p-5 rounded-xl card-shadow border border-gray-100 flex flex-col justify-between transition-all hover:shadow-lg";
                     card.innerHTML = `
                         <div>
                             <div class="flex justify-between items-start mb-2">
@@ -270,7 +276,7 @@
                 });
 
                 if (!hasData) {
-                    loanListEl.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">Belum ada data. Silakan tambah data baru di atas.</div>`;
+                    loanListEl.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">Belum ada data di database pusat. Tambahkan data baru.</div>`;
                 }
 
                 // Update Ringkasan Dashboard
